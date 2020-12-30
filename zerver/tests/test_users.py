@@ -1125,12 +1125,6 @@ class UserProfileTest(ZulipTestCase):
         with get_test_image_file('img.png') as image_file:
             upload_avatar_image(image_file, cordelia, cordelia)
 
-        UserHotspot.objects.filter(user=cordelia).delete()
-        UserHotspot.objects.filter(user=iago).delete()
-        hotspots_completed = ['intro_reply', 'intro_streams', 'intro_topics']
-        for hotspot in hotspots_completed:
-            UserHotspot.objects.create(user=cordelia, hotspot=hotspot)
-
         events: List[Mapping[str, Any]] = []
         with tornado_redirected_to_list(events):
             copy_user_settings(cordelia, iago)
@@ -1175,7 +1169,7 @@ class UserProfileTest(ZulipTestCase):
         self.assertEqual(hamlet.enter_sends, True)
 
         hotspots = list(UserHotspot.objects.filter(user=iago).values_list('hotspot', flat=True))
-        self.assertEqual(hotspots, hotspots_completed)
+        self.assertEqual(hotspots, [])
 
     def test_get_user_by_id_in_realm_including_cross_realm(self) -> None:
         realm = get_realm('zulip')

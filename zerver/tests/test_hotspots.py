@@ -1,6 +1,6 @@
 import orjson
 
-from zerver.lib.actions import do_create_user, do_mark_hotspot_as_read
+from zerver.lib.actions import do_create_realm, do_create_user, do_mark_hotspot_as_read
 from zerver.lib.hotspots import ALL_HOTSPOTS, get_next_hotspots
 from zerver.lib.test_classes import ZulipTestCase
 from zerver.models import UserHotspot, UserProfile, get_realm
@@ -40,6 +40,73 @@ class TestGetNextHotspots(ZulipTestCase):
     def test_send_all(self) -> None:
         with self.settings(DEVELOPMENT=True, ALWAYS_SEND_ALL_HOTSPOTS = True):
             self.assertEqual(len(ALL_HOTSPOTS), len(get_next_hotspots(self.user)))
+
+    def test_three_users_with_same_email_all_done(self) -> None:
+        for hotspot in ALL_HOTSPOTS:
+            do_mark_hotspot_as_read(self.user, hotspot)
+
+        self.assertEqual(get_next_hotspots(self.user), [])
+
+        user_in_red = do_create_user(
+            self.user.delivery_email,
+            'password',
+            do_create_realm("red", "red"),
+            'user',
+        )
+
+        user_in_blue = do_create_user(
+            self.user.delivery_email,
+            'password',
+            do_create_realm("blue", "blue"),
+            'user',
+        )
+
+        self.assertEqual(get_next_hotspots(user_in_red), [])
+        self.assertEqual(get_next_hotspots(user_in_blue), [])
+
+    def test_three_users_with_same_email_some_done_some_not(self) -> None:
+        for hotspot in ["intro_reply", "intro_streams"]:
+            do_mark_hotspot_as_read(self.user, hotspot)
+
+        hotspots = get_next_hotspots(self.user)
+        self.assertEqual(len(hotspots), 1)
+        self.assertEqual(hotspots[0]['name'], 'intro_topics')
+
+        user_in_red = do_create_user(
+            self.user.delivery_email,
+            'password',
+            do_create_realm("red", "red"),
+            'user',
+        )
+
+        user_in_blue = do_create_user(
+            self.user.delivery_email,
+            'password',
+            do_create_realm("blue", "blue"),
+            'user',
+        )
+
+        hotspots = get_next_hotspots(user_in_red)
+        self.assertEqual(len(hotspots), 1)
+        self.assertEqual(hotspots[0]['name'], 'intro_topics')
+
+        hotspots = get_next_hotspots(user_in_blue)
+        self.assertEqual(len(hotspots), 1)
+        self.assertEqual(hotspots[0]['name'], 'intro_topics')
+
+        do_mark_hotspot_as_read(user_in_red, 'intro_topics')
+
+        hotspots = get_next_hotspots(self.user)
+        self.assertEqual(len(hotspots), 1)
+        self.assertEqual(hotspots[0]['name'], 'intro_gear')
+
+        hotspots = get_next_hotspots(user_in_red)
+        self.assertEqual(len(hotspots), 1)
+        self.assertEqual(hotspots[0]['name'], 'intro_gear')
+
+        hotspots = get_next_hotspots(user_in_blue)
+        self.assertEqual(len(hotspots), 1)
+        self.assertEqual(hotspots[0]['name'], 'intro_gear')
 
 class TestHotspots(ZulipTestCase):
     def test_do_mark_hotspot_as_read(self) -> None:

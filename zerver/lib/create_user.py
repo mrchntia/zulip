@@ -4,7 +4,6 @@ import orjson
 from django.contrib.auth.models import UserManager
 from django.utils.timezone import now as timezone_now
 
-from zerver.lib.hotspots import copy_hotpots
 from zerver.lib.upload import copy_avatar
 from zerver.lib.utils import generate_api_key
 from zerver.models import (
@@ -42,8 +41,6 @@ def copy_user_settings(source_profile: UserProfile, target_profile: UserProfile)
         do_change_avatar_fields(target_profile, UserProfile.AVATAR_FROM_USER,
                                 skip_notify=True, acting_user=target_profile)
         copy_avatar(source_profile, target_profile)
-
-    copy_hotpots(source_profile, target_profile)
 
 def get_display_email_address(user_profile: UserProfile) -> str:
     if not user_profile.email_address_is_realm_public():
